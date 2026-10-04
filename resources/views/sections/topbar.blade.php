@@ -151,6 +151,21 @@
                 <!-- ADD END -->
         @endif
 
+        @if (isset($languageSettings) && $languageSettings->count() > 1)
+            <li class="d-none d-md-block" data-toggle="tooltip" data-placement="bottom" title="{{ __('app.language') }}">
+                <div class="d-flex align-items-center px-2">
+                    @foreach ($languageSettings as $language)
+                        <a href="javascript:;"
+                           class="js-change-language f-12 {{ app()->getLocale() === $language->language_code ? 'font-weight-bold text-primary' : 'text-dark-grey' }}"
+                           data-locale="{{ $language->language_code }}">
+                            {{ \App\Models\LanguageSetting::LANGUAGES_TRANS[$language->language_code] ?? $language->language_name }}
+                        </a>
+                        @if (!$loop->last)<span class="mx-1 text-muted">|</span>@endif
+                    @endforeach
+                </div>
+            </li>
+        @endif
+
         <!-- NOTIFICATIONS START -->
             <li title="{{__('app.newNotifications')}}">
                 <div class="notification_box dropdown">

@@ -5,6 +5,7 @@ namespace App\Providers;
 use Carbon\Carbon;
 use App\Models\User;
 use App\Models\Company;
+use App\Models\LanguageSetting;
 use App\Scopes\ActiveScope;
 use Illuminate\Http\Request;
 use Laravel\Fortify\Fortify;
@@ -100,7 +101,19 @@ class FortifyServiceProvider extends ServiceProvider
                     ]);
                 }
 
-                session()->forget('locale');
+                $selectedLocale = session('locale');
+                $selectedLanguage = $selectedLocale
+                    ? LanguageSetting::where('language_code', $selectedLocale)
+                        ->where('status', 'enabled')
+                        ->first()
+                    : null;
+
+                if ($selectedLanguage && $user->locale !== $selectedLanguage->language_code) {
+                    $user->locale = $selectedLanguage->language_code;
+                    $user->rtl = (bool) $selectedLanguage->is_rtl;
+                    $user->save();
+                }
+
                 session()->put([
                     'current_latitude' => $request->current_latitude,
                     'current_longitude' => $request->current_longitude,
