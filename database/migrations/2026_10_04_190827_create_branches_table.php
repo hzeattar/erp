@@ -13,6 +13,10 @@ return new class extends Migration
     {
         Schema::create('branches', function (Blueprint $table) {
             $table->id();
+            $table->string('name');
+            $table->decimal('latitude', 10, 7);
+            $table->decimal('longitude', 10, 7);
+            $table->unsignedInteger('allowed_radius_in_meters')->default(50);
             $table->timestamps();
         });
     }
