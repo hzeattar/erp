@@ -41,6 +41,16 @@ class AttendanceCheckInTest extends TestCase
             'branch_id' => $branch->id,
             'status' => 'Present',
         ]);
+
+        $this->postJson('/api/attendance/check-in', [
+            'branch_id' => $branch->id,
+            'current_lat' => 30.0444,
+            'current_lng' => 31.2357,
+        ])
+            ->assertOk()
+            ->assertJsonPath('message', 'Attendance was already checked in for today.');
+
+        $this->assertDatabaseCount('attendances', 1);
     }
 
     public function test_employee_cannot_check_in_at_an_unassigned_branch(): void

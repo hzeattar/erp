@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Attendance;
 use App\Models\Employee;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -52,19 +53,36 @@ class AttendanceCheckInController extends Controller
             ], 400);
         }
 
-        $attendance = Attendance::firstOrCreate(
-            [
-                'employee_id' => $employee->id,
-                'date' => now()->toDateString(),
-            ],
-            [
-                'branch_id' => $branch->id,
-                'status' => 'Present',
-            ],
-        );
+        $attendanceDate = now()->toDateString();
+        $attendance = Attendance::query()
+            ->where('employee_id', $employee->id)
+            ->whereDate('date', $attendanceDate)
+            ->first();
+        $wasRecentlyCreated = false;
+
+        if ($attendance === null) {
+            try {
+                $attendance = Attendance::create([
+                    'employee_id' => $employee->id,
+                    'branch_id' => $branch->id,
+                    'date' => $attendanceDate,
+                    'status' => 'Present',
+                ]);
+                $wasRecentlyCreated = true;
+            } catch (UniqueConstraintViolationException $exception) {
+                $attendance = Attendance::query()
+                    ->where('employee_id', $employee->id)
+                    ->whereDate('date', $attendanceDate)
+                    ->first();
+
+                if ($attendance === null) {
+                    throw $exception;
+                }
+            }
+        }
 
         return response()->json([
-            'message' => $attendance->wasRecentlyCreated
+            'message' => $wasRecentlyCreated
                 ? 'Attendance checked in successfully.'
                 : 'Attendance was already checked in for today.',
             'attendance' => $attendance->load('branch'),
