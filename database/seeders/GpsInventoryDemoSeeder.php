@@ -30,6 +30,20 @@ class GpsInventoryDemoSeeder extends Seeder
             $branch->users()->syncWithoutDetaching([$employee->id]);
         }
 
+        $demoBranch = Branch::withoutGlobalScopes()->updateOrCreate(
+            ['company_id' => $companyId, 'name' => 'Demo Client Branch'],
+            [
+                'latitude' => 30.060000,
+                'longitude' => 31.330000,
+                'allowed_radius_in_meters' => 300,
+                'is_active' => true,
+            ]
+        );
+
+        if ($employee) {
+            $demoBranch->users()->syncWithoutDetaching([$employee->id]);
+        }
+
         $mainWarehouse = ContractorWarehouse::withoutGlobalScopes()->updateOrCreate(
             ['company_id' => $companyId, 'name' => 'Main Warehouse'],
             ['type' => 'main', 'address' => 'Main company warehouse', 'is_active' => true]
