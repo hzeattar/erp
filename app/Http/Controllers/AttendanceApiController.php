@@ -13,6 +13,8 @@ class AttendanceApiController extends Controller
 {
     public function issueToken(Request $request): JsonResponse
     {
+        $this->setApiLocale($request);
+
         $credentials = $request->validate([
             'email' => ['required', 'email'],
             'password' => ['required', 'string'],
@@ -22,13 +24,15 @@ class AttendanceApiController extends Controller
         $user = User::withoutGlobalScopes()->where('email', $credentials['email'])->first();
 
         if (!$user || !Hash::check($credentials['password'], $user->password) || !$user->hasRole('employee')) {
-            return response()->json(['message' => 'Invalid employee credentials.'], 401);
+            return response()->json(['message' => __('gps_inventory.api.invalid_credentials')], 401);
         }
+
+        $this->setApiLocale($request, $user);
 
         $token = $user->createToken($credentials['device_name'] ?? 'attendance-mobile', ['attendance:check-in']);
 
         return response()->json([
-            'message' => 'Token issued successfully.',
+            'message' => __('gps_inventory.api.token_issued'),
             'token' => $token->plainTextToken,
             'user' => [
                 'id' => $user->id,
@@ -40,24 +44,26 @@ class AttendanceApiController extends Controller
 
     public function checkIn(Request $request): JsonResponse
     {
+        /** @var User $user */
+        $user = $request->user();
+        $this->setApiLocale($request, $user);
+
         $data = $request->validate([
             'branch_id' => ['required', 'integer'],
             'current_lat' => ['required', 'numeric', 'between:-90,90'],
             'current_lng' => ['required', 'numeric', 'between:-180,180'],
         ]);
 
-        /** @var User $user */
-        $user = $request->user();
         $branch = Branch::where('company_id', $user->company_id)
             ->where('is_active', true)
             ->find($data['branch_id']);
 
         if (!$branch) {
-            return response()->json(['message' => 'Branch not found.'], 404);
+            return response()->json(['message' => __('gps_inventory.api.branch_not_found')], 404);
         }
 
         if (!$branch->users()->where('users.id', $user->id)->exists()) {
-            return response()->json(['message' => 'You are not assigned to this branch.'], 403);
+            return response()->json(['message' => __('gps_inventory.api.not_assigned')], 403);
         }
 
         $distance = $this->distanceInMeters(
@@ -69,7 +75,7 @@ class AttendanceApiController extends Controller
 
         if ($distance > $branch->allowed_radius_in_meters) {
             return response()->json([
-                'message' => 'Out of branch zone.',
+                'message' => __('gps_inventory.api.out_of_zone'),
                 'distance_in_meters' => round($distance, 2),
                 'allowed_radius_in_meters' => $branch->allowed_radius_in_meters,
             ], 400);
@@ -84,7 +90,7 @@ class AttendanceApiController extends Controller
 
         if ($existing) {
             return response()->json([
-                'message' => 'You are already checked in today.',
+                'message' => __('gps_inventory.api.already_checked_in'),
                 'attendance_id' => $existing->id,
             ], 409);
         }
@@ -105,7 +111,7 @@ class AttendanceApiController extends Controller
         $attendance->save();
 
         return response()->json([
-            'message' => 'Attendance checked in successfully.',
+            'message' => __('gps_inventory.api.checked_in'),
             'attendance_id' => $attendance->id,
             'branch' => $branch->name,
             'distance_in_meters' => round($distance, 2),
@@ -122,5 +128,16 @@ class AttendanceApiController extends Controller
         $centralAngle = 2 * asin(min(1, sqrt($a)));
 
         return $earthRadius * $centralAngle;
+    }
+
+    private function setApiLocale(Request $request, ?User $user = null): void
+    {
+        $locale = $request->headers->has('Accept-Language')
+            ? $request->getPreferredLanguage(['en', 'ar'])
+            : $user?->locale;
+
+        if (in_array($locale, ['en', 'ar'], true)) {
+            app()->setLocale($locale);
+        }
     }
 }

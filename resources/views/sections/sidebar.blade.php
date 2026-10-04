@@ -79,6 +79,19 @@
                     </a>
                 @endif
 
+                @if (isset($languageSettings) && $languageSettings->count() > 1)
+                    <div class="dropdown-item d-flex justify-content-between align-items-center f-15 text-dark">
+                        <span>@lang('app.language')</span>
+                        <span class="d-flex align-items-center">
+                            @foreach ($languageSettings as $language)
+                                <a href="javascript:;" class="mx-1 js-change-language" data-locale="{{ $language->language_code }}" title="{{ $language->language_name }}">
+                                    {{ \App\Models\LanguageSetting::LANGUAGES_TRANS[$language->language_code] ?? $language->language_name }}
+                                </a>
+                            @endforeach
+                        </span>
+                    </div>
+                @endif
+
                 <a class="dropdown-item d-flex justify-content-between align-items-center f-15 text-dark"
                     href="javascript:;">
                     <label for="dark-theme-toggle">@lang('app.darkTheme')</label>
@@ -130,6 +143,11 @@
             const url = "{{ route('employees.invite_member') }}";
             $(MODAL_LG + ' ' + MODAL_HEADING).html('...');
             $.ajaxModal(MODAL_LG, url);
+        });
+
+        $('.js-change-language').click(function() {
+            $.get("{{ route('front.changeLang', ':locale') }}".replace(':locale', $(this).data('locale')))
+                .done(function() { window.location.reload(); });
         });
 
         $('#dark-theme-toggle').change(function() {

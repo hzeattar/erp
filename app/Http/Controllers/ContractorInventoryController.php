@@ -20,7 +20,7 @@ class ContractorInventoryController extends AccountBaseController
 
         $companyId = user()->company_id;
 
-        $this->pageTitle = 'Contractor Inventory';
+        $this->pageTitle = 'gps_inventory.inventory.title';
         $this->warehouses = ContractorWarehouse::where('company_id', $companyId)
             ->with(['stocks.product'])
             ->orderBy('type')
@@ -51,7 +51,7 @@ class ContractorInventoryController extends AccountBaseController
             'is_active' => true,
         ]);
 
-        return back()->with('success', 'Warehouse created successfully.');
+        return back()->with('success', __('gps_inventory.inventory.warehouse_saved'));
     }
 
     public function storeTransfer(Request $request): RedirectResponse
@@ -78,7 +78,7 @@ class ContractorInventoryController extends AccountBaseController
 
             if ($to->type !== 'contractor') {
                 throw ValidationException::withMessages([
-                    'to_warehouse_id' => 'The destination warehouse must be a contractor warehouse.',
+                    'to_warehouse_id' => __('gps_inventory.api.destination_must_contractor'),
                 ]);
             }
 
@@ -90,7 +90,7 @@ class ContractorInventoryController extends AccountBaseController
 
             if (!$sourceStock || $sourceStock->quantity < $data['quantity']) {
                 throw ValidationException::withMessages([
-                    'quantity' => 'The source warehouse does not have enough stock for this transfer.',
+                    'quantity' => __('gps_inventory.api.source_not_enough'),
                 ]);
             }
 
@@ -113,7 +113,7 @@ class ContractorInventoryController extends AccountBaseController
             ]);
         });
 
-        return back()->with('success', 'Stock transfer completed successfully.');
+        return back()->with('success', __('gps_inventory.inventory.transfer_completed'));
     }
 
     private function ensureAdmin(): void

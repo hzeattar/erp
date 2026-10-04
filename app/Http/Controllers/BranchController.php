@@ -15,7 +15,7 @@ class BranchController extends AccountBaseController
     {
         $this->ensureAdmin();
 
-        $this->pageTitle = 'GPS Branches';
+        $this->pageTitle = 'gps_inventory.branches.title';
         $this->branches = Branch::withCount('users')->latest()->get();
         $this->employees = $this->employeeOptions();
 
@@ -38,7 +38,7 @@ class BranchController extends AccountBaseController
 
         $branch->users()->sync($data['employee_ids'] ?? []);
 
-        return redirect()->route('branches.index')->with('success', 'Branch and employee assignments saved.');
+        return redirect()->route('branches.index')->with('success', __('gps_inventory.branches.saved'));
     }
 
     public function edit(Branch $branch): View
@@ -46,7 +46,7 @@ class BranchController extends AccountBaseController
         $this->ensureAdmin();
         $this->ensureCompany($branch);
 
-        $this->pageTitle = 'Edit GPS Branch';
+        $this->pageTitle = 'gps_inventory.branches.edit_title';
         $this->branch = $branch->load('users:id,name');
         $this->employees = $this->employeeOptions();
 
@@ -69,7 +69,7 @@ class BranchController extends AccountBaseController
 
         $branch->users()->sync($data['employee_ids'] ?? []);
 
-        return redirect()->route('branches.index')->with('success', 'Branch updated successfully.');
+        return redirect()->route('branches.index')->with('success', __('gps_inventory.branches.updated'));
     }
 
     public function destroy(Branch $branch): RedirectResponse
@@ -78,7 +78,7 @@ class BranchController extends AccountBaseController
         $this->ensureCompany($branch);
         $branch->delete();
 
-        return redirect()->route('branches.index')->with('success', 'Branch deleted successfully.');
+        return redirect()->route('branches.index')->with('success', __('gps_inventory.branches.deleted'));
     }
 
     private function validated(Request $request): array

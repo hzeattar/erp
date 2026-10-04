@@ -1202,10 +1202,26 @@ class HomeController extends Controller
 
     public function changeLang($locale)
     {
+        $language = LanguageSetting::where('language_code', $locale)
+            ->where('status', 'enabled')
+            ->first();
+
+        if (!$language) {
+            return Reply::error(__('messages.invalidRequest'));
+        }
+
         session(['locale' => $locale]);
-        $lang = LanguageSetting::where('language_code', $locale)->first()->is_rtl;
         session()->forget('changedRtl');
-        session(['changedRtl' => $lang == true ? true : false]);
+        session()->forget('isRtl');
+        session(['changedRtl' => (bool) $language->is_rtl]);
+
+        if (auth()->check()) {
+            auth()->user()->update([
+                'locale' => $language->language_code,
+                'rtl' => (bool) $language->is_rtl,
+            ]);
+            session()->forget('user');
+        }
 
         return Reply::success(__('messages.updateSuccess'));
     }

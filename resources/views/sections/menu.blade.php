@@ -34,10 +34,10 @@
     @endif
 
     @if (in_array('admin', user_roles()))
-        <x-menu-item icon="geo-alt" :text="__('GPS & Inventory')">
+        <x-menu-item icon="geo-alt" :text="__('gps_inventory.module')">
             <div class="accordionItemContent">
-                <x-sub-menu-item :link="route('branches.index')" :text="__('GPS Branches')" />
-                <x-sub-menu-item :link="route('contractor-inventory.index')" :text="__('Contractor Inventory')" />
+                <x-sub-menu-item :link="route('branches.index')" :text="__('gps_inventory.branches.title')" />
+                <x-sub-menu-item :link="route('contractor-inventory.index')" :text="__('gps_inventory.inventory.title')" />
             </div>
         </x-menu-item>
     @endif
