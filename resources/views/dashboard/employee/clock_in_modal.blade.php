@@ -9,9 +9,15 @@
     <div class="modal-body">
             <div class="row justify-content-between">
                 <div class="col" id="task_div">
+                    @php
+                        $shiftNameKey = str($shiftAssigned->shift_name)->camel();
+                        $displayShiftName = $shiftAssigned->shift_name === 'Day Off'
+                            ? __('modules.attendance.dayOff')
+                            : (\Illuminate\Support\Facades\Lang::has('app.' . $shiftNameKey) ? __('app.' . $shiftNameKey) : $shiftAssigned->shift_name);
+                    @endphp
                     <h4 class="mb-4 d-flex justify-content-between"><span><i class="fa fa-clock"></i> {{ now()->timezone(company()->timezone)->translatedFormat(company()->date_format . ' ' . company()->time_format) }}</span>
                         <span class="badge badge-info f-14"
-                              style="background-color: {{ $shiftAssigned->color }}">{{ $shiftAssigned->shift_name }}</span>
+                              style="background-color: {{ $shiftAssigned->color }}">{{ $displayShiftName }}</span>
                     </h4>
                     <div class="row">
                         <div class="col-md-6">

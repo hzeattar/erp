@@ -12,7 +12,7 @@
 
             <div class="col-md-12 mt-4">
 
-                <x-cards.data title="To Do List">
+                <x-cards.data :title="__('app.to_do').' '.__('app.list')">
 
                     <x-cards.onboarding-item :title="__('modules.checklist.installation')"
                                              :summary="__('modules.checklist.installationInfo')" completed="true"/>

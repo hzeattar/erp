@@ -31,7 +31,7 @@
                                     @else
                                         <i class="fa fa-circle mr-1 text-yellow"></i>
                                     @endif
-                                    {{ $ticket->status }}
+                                    {{ \Illuminate\Support\Facades\Lang::has('app.' . $ticket->status) ? __('app.' . $ticket->status) : $ticket->status }}
                                 </td>
                                 <td class="pr-20" align="right">
                                     <span>{{ $ticket->updated_at->translatedFormat(company()->date_format) }}</span>

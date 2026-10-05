@@ -241,7 +241,7 @@
                             </td>
                             <td class="f-14 pr-20 text-right" width="20%">
                                 <x-status :style="'color:'.$task->boardColumn->label_color"
-                                          :value="($task->boardColumn->slug == 'completed' || $task->boardColumn->slug == 'incomplete' ? __('app.' . $task->boardColumn->slug) : $task->boardColumn->column_name)"/>
+                                          :value="(\Illuminate\Support\Facades\Lang::has('app.' . $task->boardColumn->slug) ? __('app.' . $task->boardColumn->slug) : $task->boardColumn->column_name)"/>
                             </td>
                         </tr>
                     @empty
@@ -294,7 +294,7 @@
 
     @if (in_array('employees', user_modules()) && in_array('documents', $activeWidgets))
         <div class="col-sm-12 col-lg-6 mt-3">
-            <x-cards.data :title="__('modules.dashboard.documents').' <i class=\'fa fa-question-circle\' data-toggle=\'popover\' data-placement=\'top\' data-content=\'Document expiries for current year\' data-trigger=\'hover\'></i>'" padding="false" otherClasses="h-200">
+            <x-cards.data :title="__('modules.dashboard.documents').' <i class=\'fa fa-question-circle\' data-toggle=\'popover\' data-placement=\'top\' data-content=\''.__('messages.documentExpiriesForCurrentYear').'\' data-trigger=\'hover\'></i>'" padding="false" otherClasses="h-200">
                 <div class="document-list p-3">
                     @forelse ($upcomingDocumentExpiries as $document)
                         @php

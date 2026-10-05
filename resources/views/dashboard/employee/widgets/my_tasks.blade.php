@@ -38,7 +38,7 @@
                                 <td class="pr-20">
                                     <i class="fa fa-circle mr-1 text-yellow"
                                        style="color: {{ $task->boardColumn->label_color }}"></i>
-                                    {{ $task->boardColumn->column_name }}
+                                    {{ \Illuminate\Support\Facades\Lang::has('app.' . $task->boardColumn->slug) ? __('app.' . $task->boardColumn->slug) : $task->boardColumn->column_name }}
                                 </td>
                                 <td class="pr-20" align="right">
                                     @if (is_null($task->due_date))

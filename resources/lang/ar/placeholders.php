@@ -135,7 +135,7 @@ return [
   'location' => 'أدخل الموقع',
   'website' => 'على سبيل المثال https://www.example.com',
   'relationship' => 'على سبيل المثال أب',
-  'shiftName' => 'على سبيل المثال التحول الليلي',
+  'shiftName' => 'مثال: الوردية الليلية',
   'shiftShortCode' => 'على سبيل المثال ن.س',
   'appreciation' => [
     'title' => 'على سبيل المثال موظف الشهر',

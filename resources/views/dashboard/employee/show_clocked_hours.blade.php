@@ -67,7 +67,8 @@
                                     <p class="mb-0">@lang('modules.attendance.clock_in')
                                         @if (!is_null($item->employee_shift_id))
                                             @if ($item->shift->shift_name != 'Day Off')
-                                                <span class="badge badge-info ml-2" style="background-color: {{ $item->shift->color }}">{{ $item->shift->shift_name }}</span>
+                                                @php $shiftNameKey = str($item->shift->shift_name)->camel(); @endphp
+                                                <span class="badge badge-info ml-2" style="background-color: {{ $item->shift->color }}">{{ \Illuminate\Support\Facades\Lang::has('app.' . $shiftNameKey) ? __('app.' . $shiftNameKey) : $item->shift->shift_name }}</span>
                                             @else
                                                 <span class="badge badge-secondary ml-2" >{{ __('modules.attendance.' . str($attendanceSettings->shift_name)->camel()) }}</span>
                                             @endif

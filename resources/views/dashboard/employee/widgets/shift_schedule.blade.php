@@ -16,13 +16,20 @@
                             <td>{{ $weekDate->translatedFormat('l') }}</td>
                             <td>
                                 @if (isset($weekShifts[$key]->shift))
+                                    @php
+                                        $shiftName = $weekShifts[$key]->shift->shift_name;
+                                        $shiftNameKey = str($shiftName)->camel();
+                                        $displayShiftName = $shiftName === 'Day Off'
+                                            ? __('modules.attendance.dayOff')
+                                            : (\Illuminate\Support\Facades\Lang::has('app.' . $shiftNameKey) ? __('app.' . $shiftNameKey) : $shiftName);
+                                    @endphp
                                     @if ($weekShifts[$key]->shift->shift_name == 'Day Off')
                                         <span class="badge badge-secondary text-body"
-                                              style="background-color:{{ $weekShifts[$key]->shift->color }}">{{ __('modules.attendance.' . str($weekShifts[$key]->shift->shift_name)->camel()) }}
+                                              style="background-color:{{ $weekShifts[$key]->shift->color }}">{{ $displayShiftName }}
                                                                 </span>
                                     @else
                                         <span class="badge badge-success"
-                                              style="background-color:{{ $weekShifts[$key]->shift->color }}">{{ $weekShifts[$key]->shift->shift_name }}
+                                              style="background-color:{{ $weekShifts[$key]->shift->color }}">{{ $displayShiftName }}
                                                                 </span>
                                     @endif
 
