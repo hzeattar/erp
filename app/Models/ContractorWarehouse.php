@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Traits\HasCompany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ContractorWarehouse extends BaseModel
@@ -11,6 +12,7 @@ class ContractorWarehouse extends BaseModel
 
     protected $fillable = [
         'company_id',
+        'contractor_id',
         'name',
         'type',
         'address',
@@ -24,6 +26,11 @@ class ContractorWarehouse extends BaseModel
     public function stocks(): HasMany
     {
         return $this->hasMany(ContractorInventoryStock::class, 'warehouse_id');
+    }
+
+    public function contractor(): BelongsTo
+    {
+        return $this->belongsTo(ContractorProfile::class, 'contractor_id');
     }
 
     public function outgoingTransfers(): HasMany

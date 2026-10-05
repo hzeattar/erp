@@ -112,6 +112,7 @@
                     class="mb-0 text-lg-right text-md-right f-18 font-weight-bold text-dark-grey d-grid align-items-center">
                     <input type="hidden" id="current-latitude" name="current_latitude">
                     <input type="hidden" id="current-longitude" name="current_longitude">
+                    <input type="hidden" id="current-accuracy" name="current_accuracy">
 
                     <span id="dashboard-clock">
                         {!! now()->timezone(company()->timezone)->translatedFormat(company()->time_format) . '</span><span class="f-10 font-weight-normal">' . now()->timezone(company()->timezone)->translatedFormat('l') . '</span>' !!}
@@ -770,33 +771,43 @@
 
             function clockOut()
             {
-
-                var token = "{{ csrf_token() }}";
-                var currentLatitude = document.getElementById("current-latitude").value;
-                var currentLongitude = document.getElementById("current-longitude").value;
-
-                var clockOutLocation = document.getElementById("clock_out_location").value;
-                var clockOutWorkFromType = document.getElementById("clock_out_work_from_type").value;
-                var clockOutWorkFrom = document.getElementById("clock_out_working_from").value;
-
-                $.easyAjax({
-                    url: "{{ route('attendances.update_clock_in') }}",
-                    type: "GET",
-                    data: {
-                        currentLatitude: currentLatitude,
-                        currentLongitude: currentLongitude,
-                        clockOutLocation: clockOutLocation,
-                        clockOutWorkFromType: clockOutWorkFromType,
-                        clockOutWorkFrom: clockOutWorkFrom,
-                        _token: token,
-                        id: '{{ $currentClockIn->id }}'
-                    },
-                    success: function(response) {
-                        if (response.status == 'success') {
-                            window.location.reload();
+                const submitClockOut = () => {
+                    $.easyAjax({
+                        url: "{{ route('attendances.update_clock_in') }}",
+                        type: "POST",
+                        data: {
+                            current_lat: document.getElementById("current-latitude").value,
+                            current_lng: document.getElementById("current-longitude").value,
+                            current_accuracy: document.getElementById("current-accuracy").value,
+                            clockOutLocation: document.getElementById("clock_out_location").value,
+                            clockOutWorkFromType: document.getElementById("clock_out_work_from_type").value,
+                            clockOutWorkFrom: document.getElementById("clock_out_working_from").value,
+                            _token: "{{ csrf_token() }}",
+                            id: '{{ $currentClockIn->id }}'
+                        },
+                        success: function(response) {
+                            if (response.status == 'success') {
+                                window.location.reload();
+                            }
                         }
-                    }
-                });
+                    });
+                };
+
+                if (!navigator.geolocation) {
+                    submitClockOut();
+                    return;
+                }
+
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        document.getElementById("current-latitude").value = position.coords.latitude;
+                        document.getElementById("current-longitude").value = position.coords.longitude;
+                        document.getElementById("current-accuracy").value = position.coords.accuracy;
+                        submitClockOut();
+                    },
+                    submitClockOut,
+                    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+                );
             }
         @endif
 
@@ -883,6 +894,10 @@
             function showPosition(position) {
                 currentLatitude.value = position.coords.latitude;
                 currentLongitude.value = position.coords.longitude;
+                const currentAccuracy = document.getElementById("current-accuracy");
+                if (currentAccuracy) {
+                    currentAccuracy.value = position.coords.accuracy;
+                }
             }
             getLocation();
 

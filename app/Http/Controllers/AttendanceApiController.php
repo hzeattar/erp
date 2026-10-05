@@ -4,13 +4,19 @@ namespace App\Http\Controllers;
 
 use App\Models\Attendance;
 use App\Models\Branch;
+use App\Models\Company;
 use App\Models\User;
+use App\Services\GpsAttendanceService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
 class AttendanceApiController extends Controller
 {
+    public function __construct(private readonly GpsAttendanceService $gpsAttendance)
+    {
+    }
+
     public function issueToken(Request $request): JsonResponse
     {
         $this->setApiLocale($request);
@@ -29,7 +35,11 @@ class AttendanceApiController extends Controller
 
         $this->setApiLocale($request, $user);
 
-        $token = $user->createToken($credentials['device_name'] ?? 'attendance-mobile', ['attendance:check-in']);
+        $token = $user->createToken($credentials['device_name'] ?? 'attendance-mobile', [
+            'attendance:branches',
+            'attendance:check-in',
+            'attendance:check-out',
+        ]);
 
         return response()->json([
             'message' => __('gps_inventory.api.token_issued'),
@@ -39,6 +49,24 @@ class AttendanceApiController extends Controller
                 'name' => $user->name,
                 'email' => $user->email,
             ],
+        ]);
+    }
+
+    public function branches(Request $request): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+        $this->setApiLocale($request, $user);
+
+        return response()->json([
+            'branches' => $this->gpsAttendance->assignedBranches($user)->map(fn (Branch $branch) => [
+                'id' => $branch->id,
+                'name' => $branch->name,
+                'latitude' => $branch->latitude,
+                'longitude' => $branch->longitude,
+                'allowed_radius_in_meters' => $branch->allowed_radius_in_meters,
+                'maximum_accuracy_in_meters' => $branch->maximum_accuracy_in_meters,
+            ])->values(),
         ]);
     }
 
@@ -52,7 +80,8 @@ class AttendanceApiController extends Controller
             'branch_id' => ['required', 'integer'],
             'current_lat' => ['required', 'numeric', 'between:-90,90'],
             'current_lng' => ['required', 'numeric', 'between:-180,180'],
-        ]);
+            'current_accuracy' => ['required', 'numeric', 'between:0,10000'],
+        ], $this->locationValidationMessages());
 
         $branch = Branch::where('company_id', $user->company_id)
             ->where('is_active', true)
@@ -62,29 +91,25 @@ class AttendanceApiController extends Controller
             return response()->json(['message' => __('gps_inventory.api.branch_not_found')], 404);
         }
 
-        if (!$branch->users()->where('users.id', $user->id)->exists()) {
+        if (!$this->gpsAttendance->assignedBranch($user, $branch->id)) {
             return response()->json(['message' => __('gps_inventory.api.not_assigned')], 403);
         }
 
-        $distance = $this->distanceInMeters(
-            (float) $data['current_lat'],
-            (float) $data['current_lng'],
-            (float) $branch->latitude,
-            (float) $branch->longitude,
-        );
+        $verification = $this->gpsAttendance->verify($request, $user, $branch, 'clock_in');
 
-        if ($distance > $branch->allowed_radius_in_meters) {
+        if (!$verification['valid']) {
             return response()->json([
-                'message' => __('gps_inventory.api.out_of_zone'),
-                'distance_in_meters' => round($distance, 2),
-                'allowed_radius_in_meters' => $branch->allowed_radius_in_meters,
-            ], 400);
+                'message' => __('gps_inventory.api.' . $verification['reason']),
+                'distance_in_meters' => round($verification['distance_in_meters'], 2),
+                'allowed_radius_in_meters' => $verification['allowed_radius_in_meters'],
+                'maximum_accuracy_in_meters' => $verification['maximum_accuracy_in_meters'],
+            ], $verification['reason'] === 'poor_accuracy' ? 422 : 400);
         }
 
-        $today = now()->toDateString();
+        $now = now($this->companyTimezone($user));
         $existing = Attendance::where('company_id', $user->company_id)
             ->where('user_id', $user->id)
-            ->whereDate('clock_in_time', $today)
+            ->whereBetween('clock_in_time', [$now->copy()->startOfDay()->utc(), $now->copy()->endOfDay()->utc()])
             ->whereNull('clock_out_time')
             ->first();
 
@@ -99,35 +124,80 @@ class AttendanceApiController extends Controller
         $attendance->company_id = $user->company_id;
         $attendance->user_id = $user->id;
         $attendance->branch_id = $branch->id;
-        $attendance->clock_in_time = now();
+        $attendance->clock_in_time = $now->utc();
         $attendance->clock_in_ip = $request->ip();
         $attendance->working_from = 'office';
         $attendance->work_from_type = 'office';
         $attendance->location_id = $user->employeeDetail?->company_address_id;
         $attendance->latitude = $data['current_lat'];
         $attendance->longitude = $data['current_lng'];
+        $attendance->clock_in_accuracy = $data['current_accuracy'];
         $attendance->late = 'no';
         $attendance->half_day = 'no';
         $attendance->save();
+        $this->gpsAttendance->recordAccepted($request, $user, $branch, 'clock_in', $attendance, $verification);
 
         return response()->json([
             'message' => __('gps_inventory.api.checked_in'),
             'attendance_id' => $attendance->id,
             'branch' => $branch->name,
-            'distance_in_meters' => round($distance, 2),
+            'distance_in_meters' => round($verification['distance_in_meters'], 2),
         ]);
     }
 
-    private function distanceInMeters(float $lat1, float $lng1, float $lat2, float $lng2): float
+    public function checkOut(Request $request): JsonResponse
     {
-        $earthRadius = 6371000;
-        $latDelta = deg2rad($lat2 - $lat1);
-        $lngDelta = deg2rad($lng2 - $lng1);
-        $a = sin($latDelta / 2) ** 2
-            + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($lngDelta / 2) ** 2;
-        $centralAngle = 2 * asin(min(1, sqrt($a)));
+        /** @var User $user */
+        $user = $request->user();
+        $this->setApiLocale($request, $user);
 
-        return $earthRadius * $centralAngle;
+        $data = $request->validate([
+            'current_lat' => ['required', 'numeric', 'between:-90,90'],
+            'current_lng' => ['required', 'numeric', 'between:-180,180'],
+            'current_accuracy' => ['required', 'numeric', 'between:0,10000'],
+        ], $this->locationValidationMessages());
+
+        $attendance = Attendance::where('company_id', $user->company_id)
+            ->where('user_id', $user->id)
+            ->whereNull('clock_out_time')
+            ->latest('clock_in_time')
+            ->first();
+
+        if (!$attendance) {
+            return response()->json(['message' => __('gps_inventory.api.not_checked_in')], 409);
+        }
+
+        $branch = $attendance->branch;
+
+        if (!$branch || !$branch->is_active) {
+            return response()->json(['message' => __('gps_inventory.api.branch_not_found')], 404);
+        }
+
+        $verification = $this->gpsAttendance->verify($request, $user, $branch, 'clock_out', $attendance);
+
+        if (!$verification['valid']) {
+            return response()->json([
+                'message' => __('gps_inventory.api.' . $verification['reason']),
+                'distance_in_meters' => round($verification['distance_in_meters'], 2),
+                'allowed_radius_in_meters' => $verification['allowed_radius_in_meters'],
+                'maximum_accuracy_in_meters' => $verification['maximum_accuracy_in_meters'],
+            ], $verification['reason'] === 'poor_accuracy' ? 422 : 400);
+        }
+
+        $attendance->clock_out_time = now($this->companyTimezone($user))->utc();
+        $attendance->clock_out_ip = $request->ip();
+        $attendance->clock_out_latitude = $data['current_lat'];
+        $attendance->clock_out_longitude = $data['current_lng'];
+        $attendance->clock_out_accuracy = $data['current_accuracy'];
+        $attendance->save();
+        $this->gpsAttendance->recordAccepted($request, $user, $branch, 'clock_out', $attendance, $verification);
+
+        return response()->json([
+            'message' => __('gps_inventory.api.checked_out'),
+            'attendance_id' => $attendance->id,
+            'branch' => $branch->name,
+            'distance_in_meters' => round($verification['distance_in_meters'], 2),
+        ]);
     }
 
     private function setApiLocale(Request $request, ?User $user = null): void
@@ -139,5 +209,19 @@ class AttendanceApiController extends Controller
         if (in_array($locale, ['en', 'ar'], true)) {
             app()->setLocale($locale);
         }
+    }
+
+    private function companyTimezone(User $user): string
+    {
+        return Company::withoutGlobalScopes()->find($user->company_id)?->timezone ?? config('app.timezone');
+    }
+
+    private function locationValidationMessages(): array
+    {
+        return [
+            'current_lat.required' => __('gps_inventory.api.location_required'),
+            'current_lng.required' => __('gps_inventory.api.location_required'),
+            'current_accuracy.required' => __('gps_inventory.api.accuracy_required'),
+        ];
     }
 }

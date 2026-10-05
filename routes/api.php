@@ -20,11 +20,20 @@ ApiRoute::group(['namespace' => 'App\Http\Controllers'], function () {
     ApiRoute::get('purchased-module', ['as' => 'api.purchasedModule', 'uses' => 'HomeController@installedModule']);
 });
 
-Route::post('auth/token', [AttendanceApiController::class, 'issueToken'])->name('api.auth.token');
+Route::post('auth/token', [AttendanceApiController::class, 'issueToken'])
+    ->middleware('throttle:10,1')
+    ->name('api.auth.token');
 
 Route::middleware('auth:sanctum')->group(function () {
+    Route::get('attendance/branches', [AttendanceApiController::class, 'branches'])
+        ->middleware('abilities:attendance:branches')
+        ->name('api.attendance.branches');
     Route::post('attendance/check-in', [AttendanceApiController::class, 'checkIn'])
+        ->middleware(['abilities:attendance:check-in', 'throttle:30,1'])
         ->name('api.attendance.check-in');
+    Route::post('attendance/check-out', [AttendanceApiController::class, 'checkOut'])
+        ->middleware(['abilities:attendance:check-out', 'throttle:30,1'])
+        ->name('api.attendance.check-out');
     Route::delete('auth/token', function (Request $request) {
         $request->user()->currentAccessToken()?->delete();
 

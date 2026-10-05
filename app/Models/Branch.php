@@ -16,6 +16,7 @@ class Branch extends BaseModel
         'latitude',
         'longitude',
         'allowed_radius_in_meters',
+        'maximum_accuracy_in_meters',
         'is_active',
     ];
 
@@ -23,6 +24,7 @@ class Branch extends BaseModel
         'latitude' => 'float',
         'longitude' => 'float',
         'allowed_radius_in_meters' => 'integer',
+        'maximum_accuracy_in_meters' => 'integer',
         'is_active' => 'boolean',
     ];
 

@@ -34,6 +34,7 @@ use App\Http\Requests\ClockIn\ClockInRequest;
 use App\Models\Company;
 use App\Models\DealFollowUp;
 use App\Models\EmployeeShift;
+use App\Services\GpsAttendanceService;
 
 /**
  *
@@ -704,6 +705,8 @@ trait EmployeeDashboard
 
         $this->attendanceSettings = attendance_setting();
         $this->location = CompanyAddress::all();
+        $this->gpsBranches = app(GpsAttendanceService::class)->assignedBranches($this->user);
+        $this->maptilerApiKey = config('services.maptiler.key');
 
         return view('dashboard.employee.clock_in_modal', $this->data);
     }
@@ -784,7 +787,35 @@ trait EmployeeDashboard
 
         abort_403($this->cannotLogin);
 
-        if($request->work_from_type !== 'home'){
+        $gpsBranch = null;
+        $gpsVerification = null;
+
+        if ($request->work_from_type !== 'home') {
+            $gpsService = app(GpsAttendanceService::class);
+            $assignedBranches = $gpsService->assignedBranches($this->user);
+
+            if ($assignedBranches->isNotEmpty()) {
+                if (!$request->filled('branch_id')) {
+                    return Reply::error(__('gps_inventory.api.branch_required'));
+                }
+
+                if (!$request->filled('current_lat') || !$request->filled('current_lng') || !$request->filled('current_accuracy')) {
+                    return Reply::error(__('gps_inventory.api.location_required'));
+                }
+
+                $gpsBranch = $gpsService->assignedBranch($this->user, (int) $request->branch_id);
+
+                if (!$gpsBranch) {
+                    return Reply::error(__('gps_inventory.api.not_assigned'));
+                }
+
+                $gpsVerification = $gpsService->verify($request, $this->user, $gpsBranch, 'clock_in');
+
+                if (!$gpsVerification['valid']) {
+                    return Reply::error(__('gps_inventory.api.' . $gpsVerification['reason']));
+                }
+            }
+
             // Check user by ip
             if (attendance_setting()->ip_check == 'yes') {
                 $ips = (array)json_decode(attendance_setting()->ip_address);
@@ -795,7 +826,7 @@ trait EmployeeDashboard
             }
 
             // Check user by location
-            if (attendance_setting()->radius_check == 'yes') {
+            if (!$gpsBranch && attendance_setting()->radius_check == 'yes') {
                 $checkRadius = $this->isWithinRadius($request, $this->user);
 
                 if(attendance_setting()->auto_clock_in_location !== 'home'){
@@ -821,17 +852,23 @@ trait EmployeeDashboard
 
             
 
-            $currentLatitude = $request->currentLatitude;
-            $currentLongitude = $request->currentLongitude;
+            $currentLatitude = $request->current_lat ?: $request->currentLatitude;
+            $currentLongitude = $request->current_lng ?: $request->currentLongitude;
 
             if ($currentLatitude != '' && $currentLongitude != '') {
                 $attendance->latitude = $currentLatitude;
                 $attendance->longitude = $currentLongitude;
             }
+            $attendance->clock_in_accuracy = $request->current_accuracy;
+            $attendance->branch_id = $gpsBranch?->id;
 
             
 
             $attendance->save();
+
+            if ($gpsBranch && $gpsVerification) {
+                app(GpsAttendanceService::class)->recordAccepted($request, $this->user, $gpsBranch, 'clock_in', $attendance, $gpsVerification);
+            }
 
             return Reply::successWithData(__('messages.attendanceSaveSuccess'), ['time' => $now->format('h:i A'), 'ip' => $attendance->clock_in_ip, 'working_from' => $attendance->working_from]);
         }
@@ -846,7 +883,7 @@ trait EmployeeDashboard
         ]);
 
         $now = now($this->company->timezone);
-        $attendance = Attendance::findOrFail($request->id);
+        $attendance = Attendance::where('user_id', $this->user->id)->findOrFail($request->id);
 
         $this->attendanceSettings = attendance_setting();
 
@@ -858,14 +895,36 @@ trait EmployeeDashboard
             }
         }
 
+        $gpsBranch = $attendance->branch;
+        $gpsVerification = null;
+
+        if ($gpsBranch) {
+            if (!$request->filled('current_lat') || !$request->filled('current_lng') || !$request->filled('current_accuracy')) {
+                return Reply::error(__('gps_inventory.api.location_required'));
+            }
+
+            $gpsVerification = app(GpsAttendanceService::class)->verify($request, $this->user, $gpsBranch, 'clock_out', $attendance);
+
+            if (!$gpsVerification['valid']) {
+                return Reply::error(__('gps_inventory.api.' . $gpsVerification['reason']));
+            }
+        }
+
         $attendance->clock_out_time = $now->copy()->timezone(config('app.timezone'));
         $attendance->clock_out_ip = request()->ip();
+        $attendance->clock_out_latitude = $request->current_lat ?: $request->currentLatitude;
+        $attendance->clock_out_longitude = $request->current_lng ?: $request->currentLongitude;
+        $attendance->clock_out_accuracy = $request->current_accuracy;
 
         $attendance->clock_out_time_location_id = $request->clockOutLocation;
         $attendance->clock_out_time_work_from_type = $request->clockOutWorkFromType;
         $attendance->clock_out_time_working_from = $request->clockOutWorkFrom;
 
         $attendance->save();
+
+        if ($gpsBranch && $gpsVerification) {
+            app(GpsAttendanceService::class)->recordAccepted($request, $this->user, $gpsBranch, 'clock_out', $attendance, $gpsVerification);
+        }
 
 
         if (isset($attendance->shift) && $attendance->shift->shift_type == 'flexible') {
@@ -928,8 +987,8 @@ trait EmployeeDashboard
     private function isWithinRadius($request, $user)
     {
         $radius = attendance_setting()->radius;
-        $currentLatitude = $request->currentLatitude ?: session('current_latitude');
-        $currentLongitude = $request->currentLongitude ?: session('current_longitude');
+        $currentLatitude = $request->current_lat ?: $request->currentLatitude ?: session('current_latitude');
+        $currentLongitude = $request->current_lng ?: $request->currentLongitude ?: session('current_longitude');
 
         if ($user->employeeDetail && $user->employeeDetail->company_address_id) {
             $location = CompanyAddress::findOrFail($user->employeeDetail->company_address_id);

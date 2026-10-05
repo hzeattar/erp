@@ -33,6 +33,7 @@ class BranchController extends AccountBaseController
             'latitude' => $data['latitude'],
             'longitude' => $data['longitude'],
             'allowed_radius_in_meters' => $data['allowed_radius_in_meters'],
+            'maximum_accuracy_in_meters' => $data['maximum_accuracy_in_meters'],
             'is_active' => $request->boolean('is_active', true),
         ]);
 
@@ -64,6 +65,7 @@ class BranchController extends AccountBaseController
             'latitude' => $data['latitude'],
             'longitude' => $data['longitude'],
             'allowed_radius_in_meters' => $data['allowed_radius_in_meters'],
+            'maximum_accuracy_in_meters' => $data['maximum_accuracy_in_meters'],
             'is_active' => $request->boolean('is_active'),
         ]);
 
@@ -88,6 +90,7 @@ class BranchController extends AccountBaseController
             'latitude' => ['required', 'numeric', 'between:-90,90'],
             'longitude' => ['required', 'numeric', 'between:-180,180'],
             'allowed_radius_in_meters' => ['required', 'integer', 'min:1', 'max:100000'],
+            'maximum_accuracy_in_meters' => ['required', 'integer', 'min:5', 'max:10000'],
             'employee_ids' => ['nullable', 'array'],
             'employee_ids.*' => [
                 'integer',

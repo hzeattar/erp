@@ -34,6 +34,10 @@ class ClockInRequest extends FormRequest
         $rules = [
             'work_from_type'  => 'required',
             'working_from'  => 'required_if:work_from_type,==,other',
+            'branch_id' => 'nullable|integer|exists:branches,id',
+            'current_lat' => 'nullable|numeric|between:-90,90',
+            'current_lng' => 'nullable|numeric|between:-180,180',
+            'current_accuracy' => 'nullable|numeric|between:0,10000',
         ];
 
         if ($clockOutTime){

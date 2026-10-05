@@ -85,6 +85,12 @@ class Attendance extends BaseModel
         'shift_end_time' => 'datetime',
         'shift_start_time' => 'datetime',
         'date' => 'datetime',
+        'latitude' => 'float',
+        'longitude' => 'float',
+        'clock_in_accuracy' => 'float',
+        'clock_out_latitude' => 'float',
+        'clock_out_longitude' => 'float',
+        'clock_out_accuracy' => 'float',
     ];
     protected $appends = ['clock_in_date'];
     protected $guarded = ['id'];
@@ -103,6 +109,11 @@ class Attendance extends BaseModel
     public function branch(): BelongsTo
     {
         return $this->belongsTo(Branch::class);
+    }
+
+    public function locationChecks()
+    {
+        return $this->hasMany(AttendanceLocationCheck::class);
     }
 
     public function shift(): BelongsTo

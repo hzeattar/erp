@@ -15,6 +15,8 @@
                     <div class="form-group col-md-6"><label>@lang('gps_inventory.branches.longitude')</label><input name="longitude" type="number" step="0.0000001" class="form-control" required value="{{ old('longitude', $branch->longitude) }}"></div>
                 </div>
                 <div class="form-group"><label>@lang('gps_inventory.branches.radius') (@lang('gps_inventory.branches.meters'))</label><input name="allowed_radius_in_meters" type="number" min="1" class="form-control" required value="{{ old('allowed_radius_in_meters', $branch->allowed_radius_in_meters) }}"></div>
+                <div class="form-group"><label>@lang('gps_inventory.branches.maximum_accuracy') (@lang('gps_inventory.branches.meters'))</label><input name="maximum_accuracy_in_meters" type="number" min="5" class="form-control" required value="{{ old('maximum_accuracy_in_meters', $branch->maximum_accuracy_in_meters) }}"><small class="form-text text-muted">@lang('gps_inventory.branches.maximum_accuracy_help')</small></div>
+                @include('branches.partials.map-picker')
                 <div class="form-group">
                     <label>@lang('gps_inventory.branches.employees')</label>
                     <select name="employee_ids[]" class="form-control select-picker" multiple data-live-search="true" data-size="8">

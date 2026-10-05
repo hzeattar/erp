@@ -26,6 +26,8 @@
                             <div class="form-group col-md-6"><label>@lang('gps_inventory.branches.longitude')</label><input name="longitude" type="number" step="0.0000001" class="form-control" required value="{{ old('longitude') }}"></div>
                         </div>
                         <div class="form-group"><label>@lang('gps_inventory.branches.radius') (@lang('gps_inventory.branches.meters'))</label><input name="allowed_radius_in_meters" type="number" min="1" class="form-control" required value="{{ old('allowed_radius_in_meters', 250) }}"></div>
+                        <div class="form-group"><label>@lang('gps_inventory.branches.maximum_accuracy') (@lang('gps_inventory.branches.meters'))</label><input name="maximum_accuracy_in_meters" type="number" min="5" class="form-control" required value="{{ old('maximum_accuracy_in_meters', 100) }}"><small class="form-text text-muted">@lang('gps_inventory.branches.maximum_accuracy_help')</small></div>
+                        @include('branches.partials.map-picker')
                         <div class="form-group">
                             <label>@lang('gps_inventory.branches.employees')</label>
                             <select name="employee_ids[]" class="form-control select-picker" multiple data-live-search="true" data-size="8">
@@ -43,13 +45,14 @@
                     <h5 class="mb-3">@lang('gps_inventory.branches.configured')</h5>
                     <div class="table-responsive">
                         <table class="table table-hover">
-                            <thead><tr><th>@lang('gps_inventory.branches.name')</th><th>@lang('gps_inventory.branches.coordinates')</th><th>@lang('gps_inventory.branches.radius')</th><th>@lang('gps_inventory.branches.employee_count')</th><th>@lang('gps_inventory.branches.actions')</th></tr></thead>
+                            <thead><tr><th>@lang('gps_inventory.branches.name')</th><th>@lang('gps_inventory.branches.coordinates')</th><th>@lang('gps_inventory.branches.radius')</th><th>@lang('gps_inventory.branches.maximum_accuracy')</th><th>@lang('gps_inventory.branches.employee_count')</th><th>@lang('gps_inventory.branches.actions')</th></tr></thead>
                             <tbody>
                             @forelse ($branches as $branch)
                                 <tr>
                                     <td>{{ $branch->name }}</td>
                                     <td>{{ $branch->latitude }}, {{ $branch->longitude }}</td>
                                     <td>{{ $branch->allowed_radius_in_meters }} @lang('gps_inventory.branches.meters')</td>
+                                    <td>{{ $branch->maximum_accuracy_in_meters }} @lang('gps_inventory.branches.meters')</td>
                                     <td>{{ $branch->users_count }}</td>
                                     <td class="text-nowrap">
                                         <a class="btn btn-sm btn-outline-primary" href="{{ route('branches.edit', $branch) }}">@lang('gps_inventory.branches.edit')</a>
@@ -59,7 +62,7 @@
                                     </td>
                                 </tr>
                             @empty
-                                <tr><td colspan="5" class="text-center text-muted">@lang('gps_inventory.branches.empty')</td></tr>
+                                <tr><td colspan="6" class="text-center text-muted">@lang('gps_inventory.branches.empty')</td></tr>
                             @endforelse
                             </tbody>
                         </table>

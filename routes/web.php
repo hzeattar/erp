@@ -156,12 +156,26 @@ Route::group(['middleware' => 'auth', 'prefix' => 'account'], function () {
         ->name('contractor-inventory.index');
     Route::post('contractor-inventory/warehouses', [ContractorInventoryController::class, 'storeWarehouse'])
         ->name('contractor-inventory.warehouses.store');
-    Route::post('contractor-inventory/transfers', [ContractorInventoryController::class, 'storeTransfer'])
-        ->name('contractor-inventory.transfers.store');
+    Route::post('contractor-inventory/contractors', [ContractorInventoryController::class, 'storeContractor'])
+        ->name('contractor-inventory.contractors.store');
+    Route::post('contractor-inventory/assignments', [ContractorInventoryController::class, 'storeAssignment'])
+        ->name('contractor-inventory.assignments.store');
+    Route::post('contractor-inventory/allowances', [ContractorInventoryController::class, 'storeAllowance'])
+        ->name('contractor-inventory.allowances.store');
+    Route::post('contractor-inventory/requests', [ContractorInventoryController::class, 'storeRequest'])
+        ->name('contractor-inventory.requests.store');
+    Route::post('contractor-inventory/requests/{stockRequest}/decision', [ContractorInventoryController::class, 'decideRequest'])
+        ->name('contractor-inventory.requests.decision');
+    Route::post('contractor-inventory/requests/{stockRequest}/issue', [ContractorInventoryController::class, 'issueRequest'])
+        ->name('contractor-inventory.requests.issue');
+    Route::post('contractor-inventory/movements', [ContractorInventoryController::class, 'storeMovement'])
+        ->name('contractor-inventory.movements.store');
+    Route::put('contractor-inventory/settings', [ContractorInventoryController::class, 'updateSettings'])
+        ->name('contractor-inventory.settings.update');
 
     Route::get('attendances/clock-in-modal', [DashboardController::class, 'clockInModal'])->name('attendances.clock_in_modal');
     Route::post('attendances/store-clock-in', [DashboardController::class, 'storeClockIn'])->name('attendances.store_clock_in');
-    Route::get('attendances/update-clock-in', [DashboardController::class, 'updateClockIn'])->name('attendances.update_clock_in');
+    Route::post('attendances/update-clock-in', [DashboardController::class, 'updateClockIn'])->name('attendances.update_clock_in');
     Route::get('attendances/show_clocked_hours', [DashboardController::class, 'showClockedHours'])->name('attendances.show_clocked_hours');
     Route::get('dashboard/private_calendar', [DashboardController::class, 'privateCalendar'])->name('dashboard.private_calendar');
     Route::get('/pusher/beams-auth', [DashboardController::class, 'beamAuth'])->name('dashboard.beam_auth');
